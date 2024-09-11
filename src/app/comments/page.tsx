@@ -17,18 +17,19 @@ interface Comment {
 let socket: Socket
 
 export default function Comments() {
-  const [comment, setComment] = useState('')
-  const [comments, setComments] = useState<Comment[]>([])
-  const [replyId, setReplyId] = useState<string | null>(null)
-  const [replyText, setReplyText] = useState('')
-  const [editId, setEditId] = useState<string | null>(null)
-  const [editText, setEditText] = useState('')
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading] = useState(false)
-  const searchParams = useSearchParams()
-  const nickname = searchParams.get('nickname')
+  const [comment, setComment] = useState('');
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [replyId, setReplyId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
+  const [openCommentId, setOpenCommentId] = useState(null);
+  const searchParams = useSearchParams();
+  const nickname = searchParams.get('nickname');
 
   useEffect(() => {
     const initSocket = async () => {
@@ -112,7 +113,7 @@ export default function Comments() {
       text: replyId ? replyText : comment,
       parentId: replyId || undefined,
       likes: 0,
-      edited: false, // Marca o comentário como não editado inicialmente
+      edited: false,
     }
 
     socket.emit('comment', newComment)
@@ -137,7 +138,7 @@ export default function Comments() {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (editId && editText.trim() !== '') {
-      socket.emit('updateComment', { id: editId, text: editText, edited: true }) // Marca o comentário como editado
+      socket.emit('updateComment', { id: editId, text: editText, edited: true })
       setEditId(null)
       setEditText('')
     }
@@ -152,84 +153,121 @@ export default function Comments() {
     return comments.filter((comment) => comment.parentId === parentId)
   }
 
+  const toggleOptions = (id: any) => {
+    if (openCommentId === id) {
+      setOpenCommentId(null);
+    } else {
+      setOpenCommentId(id);
+    }
+  };
+
   const renderComment = (comment: Comment) => {
     const isLongText = comment.text.split('\n').length > 3;
 
     return (
-      <div key={comment.id} className="bg-white border-l border-[#F3F5F6] p-4">
-        <p className="font-bold">
-          {comment.nickname} {comment.edited && <span>(Editado)</span>}
-        </p>
+      <div key={comment.id} className="group border-l bg-[#354A5F] border-[#66829F] p-4">
+        <div className='flex flex-wrap items-center justify-between md:justify-start gap-4'>
+          <p className="mb-[0.10rem] font-semibold text-[#66829F]">
+            {comment.nickname} {comment.edited && <span>(Editado)</span>}
+          </p>
+          <div className="relative flex justify-end items-center md:opacity-0 group-hover:opacity-100 md:mx-4 transition-opacity duration-200">
+            <div className="md:hidden">
+              <button
+                onClick={() => toggleOptions(comment.id)}
+                className="text-[#66829F] rounded-md transition-colors duration-200"
+              >
+                Opções
+              </button>
+            </div>
+
+            <div
+              className={`z-[999] w-[200px] absolute right-0 top-full ${openCommentId === comment.id ? 'flex' : 'hidden'
+                } flex-col mt-2 bg-white shadow-md rounded-md p-2 md:flex md:flex-row md:relative md:bg-transparent md:shadow-none md:mt-0`}
+            >
+              <button
+                onClick={() => handleLike(comment.id!)}
+                className="flex items-center justify-between space-x-1 text-[#66829F] hover:brightness-110 p-2 rounded-md transition-colors duration-200"
+              >
+                {comment.likes > 0 ? (
+                  <>
+                    <FaHeart className="text-[red] hover:brightness-105 w-5 h-5" />
+                  </>
+                ) : (
+                  <FaRegHeart className="text-[red] hover:brightness-105 w-5 h-5" />
+                )}
+                <span className="hidden md:block">
+                  {comment.likes > 0 ? '' : ''} ({comment.likes})
+                </span>
+                <p className='text-black md:hidden'>Curtir</p>
+
+              </button>
+              <button
+                onClick={() => handleReplyClick(comment.id!)}
+                className="flex items-center justify-between text-blue-500 hover:text-blue-600 p-2 rounded-md transition-colors duration-200"
+              >
+                <FaReply className="w-5 h-5" />
+                <p className='text-black md:hidden'>Responder</p>
+
+              </button>
+
+              <button
+                onClick={() => handleEdit(comment.id!, comment.text)}
+                className="flex items-center justify-between text-blue-500 hover:text-blue-600 p-2 rounded-md transition-colors duration-200"
+              >
+                <FaEdit className="w-5 h-5" />
+                <p className='text-black md:hidden'>Editar</p>
+
+              </button>
+              <button
+                onClick={() => handleDelete(comment.id!)}
+                className="flex items-center justify-between text-red-500 hover:text-red-600 p-2 rounded-md transition-colors duration-200"
+              >
+                <FaTrash className="w-5 h-5" />
+                <p className='text-black md:hidden'>Apagar</p>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
         {editId === comment.id ? (
           <form onSubmit={(e) => handleEditSubmit(e)}>
             <textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              className="w-full p-2 border rounded mb-2"
+              className="bg-[#2B3D4F] text-white placeholder:text-[#66829F] w-full p-2 border border-[#66829F] outline-none rounded mb-2"
               required
             />
             <button
               type="submit"
               className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mr-2"
             >
-              Save
+              Salvar
             </button>
             <button
               onClick={() => setEditId(null)}
               className="bg-gray-500 text-white p-2 rounded hover:bg-gray-600"
             >
-              Cancel
+              Cancelar
             </button>
           </form>
         ) : (
           <>
             <div>
-              <p className={`whitespace-pre-wrap ${!showFullText && 'line-clamp-3'}`}>
+              <p className={`whitespace-pre-wrap text-white ${!showFullText && 'line-clamp-3'}`}>
                 {comment.text}
               </p>
               {isLongText && (
                 <button
                   onClick={() => setShowFullText(!showFullText)}
-                  className="text-blue-500 hover:underline"
+                  className="text-[#66829F] hover:underline"
                 >
                   {showFullText ? 'Ver menos' : 'Ver mais'}
                 </button>
               )}
             </div>
-            <p className="text-sm text-gray-500">
-              {new Date(comment.createdAt!).toLocaleString()}
-            </p>
-            <div className='flex justify-end'>
-              <button
-                onClick={() => handleLike(comment.id!)}
-                className="flex items-center space-x-1 text-pink-500 hover:text-pink-600 p-2 rounded-md transition-colors duration-200"
-              >
-                {comment.likes > 0 ? (
-                  <FaHeart className="w-5 h-5" />
-                ) : (
-                  <FaRegHeart className="w-5 h-5" />
-                )}
-                <span>{comment.likes > 0 ? 'Descurtir' : 'Curtir'} ({comment.likes})</span>
-              </button>
-              <button
-                onClick={() => handleReplyClick(comment.id!)}
-                className="flex items-center text-blue-500 hover:text-blue-600 p-2 rounded-md transition-colors duration-200 mr-2"
-              >
-                <FaReply className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handleEdit(comment.id!, comment.text)}
-                className="flex items-center text-blue-500 hover:text-blue-600 p-2 rounded-md transition-colors duration-200 mr-2"
-              >
-                <FaEdit className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handleDelete(comment.id!)}
-                className="flex items-center text-red-500 hover:text-red-600 p-2 rounded-md transition-colors duration-200"
-              >
-                <FaTrash className="w-5 h-5" />
-              </button>
-            </div>
+
+
           </>
         )}
         {replyId === comment.id && (
@@ -237,15 +275,21 @@ export default function Comments() {
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              className="w-full p-2 border rounded mb-2"
-              placeholder="Write a reply..."
+              className="bg-[#2B3D4F] text-white placeholder:text-[#66829F] w-full p-2 border border-[#66829F] outline-none rounded mb-2"
+              placeholder="Comment..."
               required
             />
             <button
               type="submit"
-              className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+              className="mb-2 bg-transparent border text-sm border-[#66829F] text-white p-2 rounded hover:brightness-105 hover:bg-[#354A5F] mr-2"
             >
-              Post Reply
+              Enviar Resposta
+            </button>
+            <button
+              onClick={() => setReplyId(null)}
+              className="mb-2 bg-gray-500 text-white p-2 rounded hover:bg-gray-600"
+            >
+              Cancelar
             </button>
           </form>
         )}
@@ -257,22 +301,25 @@ export default function Comments() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-2xl font-bold mb-4">Comments</h1>
-      <div className="bg-white p-4 mb-4">
+    <div className="min-h-screen bg-[#2B3D4F] text-white p-8">
+      <div className='mb-8'>
+        <p>Olá, <span className='text-[#66829F]'>{nickname}</span></p>
+      </div>
+      <div className="bg-[#2B3D4F] mb-4">
         <form onSubmit={handleSubmit}>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            className="w-full p-2 border rounded mb-2"
-            placeholder="Write a comment..."
+            className="bg-[#2B3D4F] text-white placeholder:text-[#66829F] w-full p-2 border border-[#66829F] outline-none rounded mb-2"
+            placeholder="Escreva aqui seu comentário"
             required
+            rows={3}
           />
           <button
             type="submit"
-            className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+            className="bg-transparent border text-sm border-[#66829F] text-white p-2 rounded hover:brightness-105 hover:bg-[#354A5F] mr-2"
           >
-            Post Comment
+            Enviar Comentário
           </button>
         </form>
       </div>
