@@ -82,7 +82,7 @@ function CommentsContent() {
   useEffect(() => {
     const initSocket = async () => {
       socket = io(process.env.NEXT_PUBLIC_SOCKET_ADDRESS!, {
-        path: "/socket",
+        path: "/socket.io",
       });
 
       socket.on("connect", () => {
