@@ -81,8 +81,8 @@ function CommentsContent() {
 
   useEffect(() => {
     const initSocket = async () => {
-      socket = io(process.env.NEXT_PUBLIC_SOCKET_ADDRESS!, {
-        path: "/socket.io",
+      socket = io("https://www.agendfy.app.br/comment-system", {
+        path: "/socket.io/",
         forceNew: true, // Forçar nova conexão
         reconnectionAttempts: 5, // Limitar tentativas de reconexão
       });
