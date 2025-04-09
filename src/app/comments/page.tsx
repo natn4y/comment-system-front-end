@@ -135,11 +135,20 @@ function CommentsContent() {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/comments?page=${page}&limit=${limit}`);
+      // Fix: Use absolute URL to ensure correct path
+      const apiUrl = window.location.origin + `/api/comments?page=${page}&limit=${limit}`;
+      const res = await fetch(apiUrl);
+
+      // Check if response is ok before trying to parse JSON
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`API returned status ${res.status}: ${errorText}`);
+        throw new Error(`API returned status ${res.status}`);
+      }
 
       const data = await res.json();
 
-      if (data.comments.length > 0) {
+      if (data.comments && data.comments.length > 0) {
         setComments((prevComments) => {
           const newComments = data.comments.filter(
             (newComment: Comment) =>
@@ -199,7 +208,7 @@ function CommentsContent() {
     <div className="min-h-screen bg-[#2B3D4F] text-white p-8">
       <div className="mb-8">
         <p>
-          Olá, <span className="text-[#66829F]">{nickname}</span>
+          Olá, <span className="text-[#66829F]">{nickname || "Anônimo"}</span>
         </p>
       </div>
       <CommentForm onSubmit={handleSubmit} nickname={nickname as string} />
@@ -210,9 +219,19 @@ function CommentsContent() {
         onDelete={handleDelete}
         onReply={handleSubmit}
       />
-      {!hasMore && (
+      {loading && (
+        <div className="flex justify-center mt-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+        </div>
+      )}
+      {!hasMore && comments.length > 0 && (
         <p className="mt-4 text-center">
           Não há mais comentários para carregar.
+        </p>
+      )}
+      {!hasMore && comments.length === 0 && !loading && (
+        <p className="mt-4 text-center">
+          Ainda não há comentários. Seja o primeiro a comentar!
         </p>
       )}
     </div>

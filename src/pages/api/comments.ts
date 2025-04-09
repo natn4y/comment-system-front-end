@@ -6,14 +6,35 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  // Add CORS headers for development
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   const { method } = req
+
+  // Test database connection first
+  try {
+    await prisma.$connect();
+  } catch (dbError) {
+    console.error('Database connection error:', dbError);
+    return res.status(500).json({
+      error: 'Database connection failed',
+      details: process.env.NODE_ENV === 'development' ? String(dbError) : undefined
+    });
+  }
 
   switch (method) {
     case 'GET':
       try {
-        const page = parseInt(req.query.page as string || '1', 10)
-        const limit = parseInt(req.query.limit as string || '5', 10)
-        const skip = (page - 1) * limit
+        const page = parseInt(String(req.query.page) || '1', 10);
+        const limit = parseInt(String(req.query.limit) || '10', 10);
+        const skip = (page - 1) * limit;
 
         const comments = await prisma.comment.findMany({
           orderBy: {
@@ -21,43 +42,51 @@ export default async function handler(
           },
           skip,
           take: limit,
-        })
+        });
 
-        const totalComments = await prisma.comment.count()
+        const totalComments = await prisma.comment.count();
 
-        res.status(200).json({
+        return res.status(200).json({
           comments,
           totalComments,
           totalPages: Math.ceil(totalComments / limit),
-        })
+          currentPage: page
+        });
       } catch (error) {
-        console.error('Error fetching comments:', error)
-        res.status(500).json({ error: 'Error fetching comments' })
+        console.error('Error fetching comments:', error);
+        return res.status(500).json({ error: 'Error fetching comments' });
       }
-      break
 
     case 'POST':
       try {
-        const { nickname, text, parentId } = req.body
+        const { nickname, text, parentId } = req.body;
+
+        if (!nickname || !text) {
+          return res.status(400).json({ error: 'Nickname and text are required' });
+        }
 
         const comment = await prisma.comment.create({
           data: {
             nickname,
             text,
-            parentId,
+            parentId: parentId || null,
+            likes: 0,
           },
-        })
+        });
 
-        res.status(201).json(comment)
+        return res.status(201).json(comment);
       } catch (error) {
-        console.error('Error creating comment:', error)
-        res.status(500).json({ error: 'Error creating comment' })
+        console.error('Error creating comment:', error);
+        return res.status(500).json({ error: 'Error creating comment' });
       }
-      break
 
     case 'PUT':
       try {
-        const { id, text } = req.body
+        const { id, text } = req.body;
+
+        if (!id || !text) {
+          return res.status(400).json({ error: 'Comment ID and text are required' });
+        }
 
         const comment = await prisma.comment.updateMany({
           where: {
@@ -65,48 +94,47 @@ export default async function handler(
           },
           data: {
             text,
+            edited: true
           },
-        })
+        });
 
         if (comment.count === 0) {
-          return res.status(404).json({ error: 'Comment not found or unauthorized' })
+          return res.status(404).json({ error: 'Comment not found or unauthorized' });
         }
 
-        res.status(200).json({ success: true })
+        return res.status(200).json({ success: true });
       } catch (error) {
-        console.error('Error updating comment:', error)
-        res.status(500).json({ error: 'Error updating comment' })
+        console.error('Error updating comment:', error);
+        return res.status(500).json({ error: 'Error updating comment' });
       }
-      break
 
     case 'DELETE':
       try {
-        const id = req.query.id as string
-        const userId = req.query.userId as string
+        // Support for both query param and body
+        const id = req.query.id as string || req.body.id;
 
-        if (!id || !userId) {
-          return res.status(400).json({ error: 'Missing id or userId' })
+        if (!id) {
+          return res.status(400).json({ error: 'Comment ID is required' });
         }
 
         const comment = await prisma.comment.deleteMany({
           where: {
             id,
           },
-        })
+        });
 
         if (comment.count === 0) {
-          return res.status(404).json({ error: 'Comment not found or unauthorized' })
+          return res.status(404).json({ error: 'Comment not found or unauthorized' });
         }
 
-        res.status(200).json({ success: true })
+        return res.status(200).json({ success: true });
       } catch (error) {
-        console.error('Error deleting comment:', error)
-        res.status(500).json({ error: 'Error deleting comment' })
+        console.error('Error deleting comment:', error);
+        return res.status(500).json({ error: 'Error deleting comment' });
       }
-      break
 
     default:
-      res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE'])
-      res.status(405).end(`Method ${method} Not Allowed`)
+      res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
+      return res.status(405).json({ error: `Method ${method} Not Allowed` });
   }
 }
