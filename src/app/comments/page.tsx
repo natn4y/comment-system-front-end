@@ -82,10 +82,9 @@ function CommentsContent() {
   useEffect(() => {
     const initSocket = async () => {
       socket = io("https://www.agendfy.app.br", {
-        path: "/socket.io/",
+        path: "/socket.io",
         forceNew: true, // Forçar nova conexão
         reconnectionAttempts: 5, // Limitar tentativas de reconexão
-        transports: ["websocket", "polling"],
       });
 
       socket.on("connect", () => {
@@ -136,7 +135,8 @@ function CommentsContent() {
     setLoading(true);
     try {
       // Fix: Use absolute URL to ensure correct path
-      const apiUrl = window.location.origin + `/api/comments?page=${page}&limit=${limit}`;
+      const apiUrl =
+        window.location.origin + `/api/comments?page=${page}&limit=${limit}`;
       const res = await fetch(apiUrl);
 
       // Check if response is ok before trying to parse JSON
