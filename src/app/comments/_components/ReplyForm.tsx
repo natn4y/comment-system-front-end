@@ -1,23 +1,23 @@
-import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface ReplyFormProps {
-  onSubmit: (text: string, nickname: string) => void
-  onCancel: () => void
+  onSubmit: (text: string, nickname: string) => void;
+  onCancel: () => void;
 }
 
 export default function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
-  const [text, setText] = useState('')
-  const searchParams = useSearchParams()
-  const nickname = searchParams.get('nickname') || 'Anônimo'
+  const [text, setText] = useState("");
+  const searchParams = useSearchParams();
+  const nickname = searchParams?.get("nickname") || "Anônimo";
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (text.trim()) {
-      onSubmit(text, nickname)
-      setText('')
+      onSubmit(text, nickname);
+      setText("");
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="mt-2">
@@ -41,5 +41,5 @@ export default function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
         Cancelar
       </button>
     </form>
-  )
+  );
 }

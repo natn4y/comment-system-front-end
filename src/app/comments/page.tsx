@@ -41,8 +41,8 @@ export default function Comments() {
 function CommentsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const nickname = searchParams.get("nickname");
-  const initialPage = parseInt(searchParams.get("page") || "1", 10);
+  const nickname = searchParams?.get("nickname");
+  const initialPage = parseInt(searchParams?.get("page") || "1", 10);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [page, setPage] = useState(initialPage);
@@ -52,9 +52,9 @@ function CommentsContent() {
 
   const updateUrlPage = useCallback(
     (newPage: number) => {
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set("page", newPage.toString());
-      router.push(`?${newSearchParams.toString()}`, { scroll: false });
+      const newSearchParams = new URLSearchParams(searchParams ?? "");
+      newSearchParams?.set("page", newPage.toString());
+      router.push(`?${newSearchParams?.toString()}`, { scroll: false });
     },
     [searchParams, router]
   );
@@ -83,6 +83,8 @@ function CommentsContent() {
     const initSocket = async () => {
       socket = io(process.env.NEXT_PUBLIC_SOCKET_ADDRESS!, {
         path: "/socket.io",
+        forceNew: true, // Forçar nova conexão
+        reconnectionAttempts: 5, // Limitar tentativas de reconexão
       });
 
       socket.on("connect", () => {
