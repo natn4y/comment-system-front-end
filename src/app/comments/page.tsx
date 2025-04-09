@@ -81,10 +81,11 @@ function CommentsContent() {
 
   useEffect(() => {
     const initSocket = async () => {
-      socket = io("https://www.agendfy.app.br/comment-system", {
+      socket = io("https://www.agendfy.app.br", {
         path: "/socket.io/",
         forceNew: true, // Forçar nova conexão
         reconnectionAttempts: 5, // Limitar tentativas de reconexão
+        transports: ["websocket", "polling"],
       });
 
       socket.on("connect", () => {
