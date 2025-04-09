@@ -136,6 +136,7 @@ function CommentsContent() {
     setLoading(true);
     try {
       const res = await fetch(`/api/comments?page=${page}&limit=${limit}`);
+
       const data = await res.json();
 
       if (data.comments.length > 0) {
