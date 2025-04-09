@@ -2,6 +2,13 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 
+// Helper para configurar CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type'
+};
+
 // GET handler
 export async function GET(request: Request) {
   try {
@@ -10,24 +17,31 @@ export async function GET(request: Request) {
     const limit = parseInt(url.searchParams.get('limit') || '10', 10);
     const skip = (page - 1) * limit;
 
-    await prisma.$connect();
-    const comments = await prisma.comment.findMany({
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-    });
-
-    const totalComments = await prisma.comment.count();
+    // Execute ambas as consultas em paralelo para melhorar a performance
+    const [comments, totalComments] = await Promise.all([
+      prisma.comment.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.comment.count()
+    ]);
 
     return NextResponse.json({
       comments,
       totalComments,
       totalPages: Math.ceil(totalComments / limit),
       currentPage: page
-    }, { status: 200 });
+    }, {
+      status: 200,
+      headers: corsHeaders
+    });
   } catch (error) {
     console.error('Error fetching comments:', error);
-    return NextResponse.json({ error: 'Error fetching comments' }, { status: 500 });
+    return NextResponse.json({ error: 'Error fetching comments' }, {
+      status: 500,
+      headers: corsHeaders
+    });
   }
 }
 
@@ -38,10 +52,12 @@ export async function POST(request: Request) {
     const { nickname, text, parentId } = body;
 
     if (!nickname || !text) {
-      return NextResponse.json({ error: 'Nickname and text are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Nickname and text are required' }, {
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
-    await prisma.$connect();
     const comment = await prisma.comment.create({
       data: {
         nickname,
@@ -51,10 +67,16 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(comment, { status: 201 });
+    return NextResponse.json(comment, {
+      status: 201,
+      headers: corsHeaders
+    });
   } catch (error) {
     console.error('Error creating comment:', error);
-    return NextResponse.json({ error: 'Error creating comment' }, { status: 500 });
+    return NextResponse.json({ error: 'Error creating comment' }, {
+      status: 500,
+      headers: corsHeaders
+    });
   }
 }
 
@@ -65,10 +87,12 @@ export async function PUT(request: Request) {
     const { id, text } = body;
 
     if (!id || !text) {
-      return NextResponse.json({ error: 'Comment ID and text are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Comment ID and text are required' }, {
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
-    await prisma.$connect();
     const comment = await prisma.comment.updateMany({
       where: { id },
       data: {
@@ -78,13 +102,22 @@ export async function PUT(request: Request) {
     });
 
     if (comment.count === 0) {
-      return NextResponse.json({ error: 'Comment not found or unauthorized' }, { status: 404 });
+      return NextResponse.json({ error: 'Comment not found or unauthorized' }, {
+        status: 404,
+        headers: corsHeaders
+      });
     }
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true }, {
+      status: 200,
+      headers: corsHeaders
+    });
   } catch (error) {
     console.error('Error updating comment:', error);
-    return NextResponse.json({ error: 'Error updating comment' }, { status: 500 });
+    return NextResponse.json({ error: 'Error updating comment' }, {
+      status: 500,
+      headers: corsHeaders
+    });
   }
 }
 
@@ -94,29 +127,44 @@ export async function DELETE(request: Request) {
     const url = new URL(request.url);
     let id = url.searchParams.get('id');
 
-    // If not in query params, try to get from body
+    // Se não estiver nos parâmetros de consulta, tente obter do corpo
     if (!id) {
-      const body = await request.json().catch(() => ({}));
-      id = body.id;
+      try {
+        const body = await request.json();
+        id = body.id;
+      } catch {
+        // Ignora erros de parse do JSON
+      }
     }
 
     if (!id) {
-      return NextResponse.json({ error: 'Comment ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Comment ID is required' }, {
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
-    await prisma.$connect();
     const comment = await prisma.comment.deleteMany({
       where: { id },
     });
 
     if (comment.count === 0) {
-      return NextResponse.json({ error: 'Comment not found or unauthorized' }, { status: 404 });
+      return NextResponse.json({ error: 'Comment not found or unauthorized' }, {
+        status: 404,
+        headers: corsHeaders
+      });
     }
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true }, {
+      status: 200,
+      headers: corsHeaders
+    });
   } catch (error) {
     console.error('Error deleting comment:', error);
-    return NextResponse.json({ error: 'Error deleting comment' }, { status: 500 });
+    return NextResponse.json({ error: 'Error deleting comment' }, {
+      status: 500,
+      headers: corsHeaders
+    });
   }
 }
 
@@ -124,10 +172,6 @@ export async function DELETE(request: Request) {
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    },
+    headers: corsHeaders
   });
 }
