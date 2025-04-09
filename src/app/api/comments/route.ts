@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { nickname, text, parentId, userId } = body
+    const { nickname, text, parentId } = body
 
     const comment = await prisma.comment.create({
       data: {
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { id, text, userId } = body
+    const { id, text } = body
 
     const comment = await prisma.comment.updateMany({
       where: {
